@@ -1,0 +1,75 @@
+[project]
+name = "nova-fastapi"
+version = "0.0.0"
+description = "Meta-framework de Nova Platform para FastAPI: el sobre de respuestas, los errores por capas y la correlación de peticiones."
+readme = "README.md"
+license = "EPL-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Angel Hincho", email = "ahincho@unsa.edu.pe" }]
+requires-python = ">=3.12"
+# Una sola dependencia de runtime, como `@ahincho/nova-nestjs`: FastAPI llega
+# con ella, y con él Starlette y Pydantic, en el rango contra el que corre la
+# suite de la plataforma.
+dependencies = ["fastapi>=0.115,<1", "pydantic>=2.11"]
+
+[project.urls]
+Repository = "https://github.com/ahincho/nova-fastapi-01-platform"
+Documentation = "https://github.com/ahincho/nova-shared-01-docs"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28",
+    "import-linter>=2.5",
+    "pytest>=8.4",
+    "ruff>=0.14",
+]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nova_fastapi"]
+
+# ----------------------------------------------------------------------
+# Ruff: linter y formateador
+#   uv run ruff check .
+#   uv run ruff format .
+# ----------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501"]
+
+# ----------------------------------------------------------------------
+# Pytest
+#   uv run pytest
+# ----------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--import-mode=importlib"]
+
+# ----------------------------------------------------------------------
+# import-linter
+#   uv run lint-imports
+# ----------------------------------------------------------------------
+[tool.importlinter]
+root_package = "nova_fastapi"
+include_external_packages = true
+
+# El modelo de errores y el sobre no conocen el framework (ADR-031): el mismo
+# caso de uso corre detrás de HTTP o de un consumidor de cola, y quien lanza un
+# error no sabe de status. Es la regla que en NestJS vigila oxlint sobre el
+# subpath `@ahincho/nova-nestjs/errors`.
+[[tool.importlinter.contracts]]
+name = "el núcleo no importa el framework"
+type = "forbidden"
+source_modules = [
+    "nova_fastapi.errors",
+    "nova_fastapi.api_standard",
+    "nova_fastapi.observability.context",
+]
+forbidden_modules = ["fastapi", "starlette", "nova_fastapi.api"]

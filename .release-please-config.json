@@ -1,0 +1,15 @@
+{
+  "packages": {
+    ".": {
+      "component": "nova-fastapi",
+      "package-name": "nova-fastapi",
+      "release-type": "python",
+      "include-component-in-tag": false,
+      "initial-version": "0.1.0",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true,
+      "draft": false,
+      "prerelease": false
+    }
+  }
+}
