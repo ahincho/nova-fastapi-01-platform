@@ -58,11 +58,16 @@ status, el código y el mensaje que ve el cliente.
 ```python
 from nova_fastapi import ApplicationError, DomainError, FieldError, InfrastructureError
 
-raise DomainError.not_found("Pedido no encontrado", code="ORDER_NOT_FOUND")       # 404
-raise DomainError.rule_violation("No te alcanzan las monedas", code="INSUFFICIENT_COINS")  # 422
-raise ApplicationError.invalid_input("Datos inválidos", [FieldError("email", "Falta el correo")])  # 400
-raise ApplicationError.rate_limited("Demasiadas búsquedas", retry_after=12)       # 429 + Retry-After
-raise InfrastructureError.timeout("gemini", cause=e)                              # 504
+# 404
+raise DomainError.not_found("Pedido no encontrado", code="ORDER_NOT_FOUND")
+# 422
+raise DomainError.rule_violation("No te alcanzan las monedas", code="INSUFFICIENT_COINS")
+# 400, con una entrada por campo
+raise ApplicationError.invalid_input("Datos inválidos", [FieldError("email", "Falta el correo")])
+# 429, con Retry-After: 12
+raise ApplicationError.rate_limited("Demasiadas búsquedas", retry_after=12)
+# 504: el proveedor va al log, no al cliente
+raise InfrastructureError.timeout("gemini", cause=e)
 ```
 
 | Capa | Fábricas | HTTP | Log |
@@ -102,8 +107,10 @@ from nova_fastapi import NovaRoute, error_responses, skip_envelope
 
 router = APIRouter(prefix="/courses", route_class=NovaRoute)
 
+
 @router.get("/{course_id}", responses=error_responses(404))
 def read(course_id: int) -> Course: ...
+
 
 @router.get("/health")
 @skip_envelope
