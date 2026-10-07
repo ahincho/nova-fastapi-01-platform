@@ -1,6 +1,6 @@
 [project]
 name = "nova-fastapi"
-version = "0.0.0"
+version = "0.1.0"
 description = "Meta-framework de Nova Platform para FastAPI: el sobre de respuestas, los errores por capas y la correlación de peticiones."
 readme = "README.md"
 license = "EPL-2.0"
