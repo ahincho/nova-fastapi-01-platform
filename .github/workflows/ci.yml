@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+# Un push nuevo sobre la misma rama cancela la corrida anterior.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# El token de Actions es de solo lectura: cada job pide lo que necesita.
+permissions:
+  contents: read
+
+jobs:
+  # ruff, el formato y pytest, con las versiones que fija uv.lock.
+  build:
+    uses: ahincho/nova-shared-02-pipelines/.github/workflows/reusable-build-python.yml@main
+
+  # El contrato de import-linter: el modelo de errores y el sobre no importan el
+  # framework. Un import que lo rompe no hace fallar ninguna prueba, así que sin
+  # este job la regla se deshace en silencio.
+  contracts:
+    name: Contratos de importación
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ahincho/nova-shared-02-pipelines/.github/actions/nova-setup-python@main
+        with:
+          save-cache: 'false'
+      - name: Verificar los contratos
+        run: uv run --no-sync lint-imports
