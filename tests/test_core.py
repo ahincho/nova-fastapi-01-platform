@@ -27,7 +27,7 @@ def test_the_core_does_not_load_any_framework():
     en un proceso aparte porque en este las otras pruebas ya cargaron FastAPI.
     """
     code = (
-        "import sys, nova_fastapi.errors, nova_fastapi.api_standard; "
+        "import sys, nova_fastapi.errors, nova_fastapi.api_standard, nova_fastapi.health; "
         "print(' '.join(sorted({m.split('.')[0] for m in sys.modules})))"
     )
     loaded = subprocess.run(

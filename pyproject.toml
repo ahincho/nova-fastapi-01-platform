@@ -71,5 +71,6 @@ source_modules = [
     "nova_fastapi.errors",
     "nova_fastapi.api_standard",
     "nova_fastapi.observability.context",
+    "nova_fastapi.health.checks",
 ]
 forbidden_modules = ["fastapi", "starlette", "nova_fastapi.api"]
