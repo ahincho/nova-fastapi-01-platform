@@ -21,9 +21,11 @@ from nova_fastapi.errors import (
     NovaError,
     PlatformError,
 )
+from nova_fastapi.health.checks import ReadinessCheck
 
 if TYPE_CHECKING:
     from nova_fastapi.api import NovaRoute, Profile, error_responses, install_nova, skip_envelope
+    from nova_fastapi.health.install import install_health
 
 __all__ = [
     "ApplicationError",
@@ -34,7 +36,9 @@ __all__ = [
     "NovaRoute",
     "PlatformError",
     "Profile",
+    "ReadinessCheck",
     "error_responses",
+    "install_health",
     "install_nova",
     "skip_envelope",
 ]
@@ -50,4 +54,8 @@ def __getattr__(name: str) -> object:
         from nova_fastapi import api
 
         return getattr(api, name)
+    if name == "install_health":
+        from nova_fastapi.health import install
+
+        return install.install_health
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

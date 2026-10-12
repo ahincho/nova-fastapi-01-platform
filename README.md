@@ -8,8 +8,9 @@ responde como cualquier otro servicio de la plataforma.
 Lo que trae hoy es el estándar de API: el sobre de las respuestas, el módulo de
 errores por capas de
 [ADR-031](https://github.com/ahincho/nova-shared-01-docs/blob/main/adrs/shared/ADR-031-modulo-de-errores-por-capas-con-trazabilidad.md)
-y la correlación de cada petición de ADR-037. La decisión de sumar Python como
-stack de Nova está en ADR-057.
+y la correlación de cada petición de ADR-037. Trae además las sondas de vida y
+de disponibilidad, con el contrato de `nova-nestjs`. La decisión de sumar Python
+como stack de Nova está en ADR-057.
 
 ## Instalación
 
@@ -146,6 +147,58 @@ que ve el cliente) y `serializer` (el cuerpo de los errores). Ningún puerto ve
 el proveedor ni la causa: los recibe ya saneados, así que uno propio no puede
 romper la regla del 5xx. El estándar entero se reemplaza con `standard`.
 
+### Sondas de salud
+
+```python
+from nova_fastapi import ReadinessCheck, install_health
+
+
+async def database() -> bool:
+    await pool.execute("select 1")
+    return True
+
+
+install_health(
+    app,
+    readiness_checks=[ReadinessCheck("database", database)],
+    legacy_path="api/v1/health",
+)
+```
+
+Sirve `GET /health/live`, `GET /health/ready` y, si se pide, la ruta heredada,
+con el mismo contrato que `NovaHealthModule.forRoot(...)` de `nova-nestjs`: un
+balanceador configura igual un servicio de FastAPI y uno de NestJS (ADR-030).
+
+```json
+{
+  "status": "error",
+  "info": { "database": { "status": "up" } },
+  "error": { "cache": { "status": "down", "message": "reported not ready" } },
+  "details": {
+    "database": { "status": "up" },
+    "cache": { "status": "down", "message": "reported not ready" }
+  }
+}
+```
+
+- **`live` no toca ninguna dependencia.** Una sonda de vida que cae porque la
+  base está caída consigue que reinicien el proceso, y eso no levanta la base.
+- **`ready` corre los chequeos en paralelo, cada uno con fecha límite** (2 s por
+  defecto, `check_timeout`), y responde 503 si alguno falla. Devolver un valor
+  falso y lanzar cuentan igual. Un chequeo puede ser una corrutina o una
+  función; la función corre en un hilo.
+- **La ruta heredada responde como `ready`**: es la que decide si llega tráfico.
+- **Las sondas no llevan el sobre**, tampoco el 503: el balanceador revisa la
+  forma del cuerpo tanto como el código.
+- **`dependencies` se suma a `ready` y a la ruta heredada, nunca a `live`.** Es el
+  lugar de un límite de peticiones; un 429 en la sonda de vida haría dar por
+  caído un proceso sano.
+- Cada chequeo caído deja un `warning` en `nova_fastapi.health`, con el chequeo
+  y su motivo en el campo `readiness`.
+
+`path` mueve las dos sondas (`path="api/health"` da `/api/health/live`). Mover
+`path` es mover lo que revisa el balanceador.
+
 ## Estructura
 
 ```
@@ -153,10 +206,12 @@ src/nova_fastapi/
 ├── errors/          # el modelo de ADR-031, los puertos y el catálogo; sin framework
 ├── api_standard/    # el sobre y el estándar de Nova; sin framework
 ├── observability/   # el id de la petición: el contexto y su middleware
+├── health/          # las sondas: los chequeos sin framework e install_health
 └── api/             # el conector: install_nova, NovaRoute, los manejadores y /docs
 ```
 
-`errors` y `api_standard` no importan FastAPI ni Starlette, y el paquete carga
+`errors`, `api_standard` y los chequeos de `health` no importan FastAPI ni
+Starlette, y el paquete carga
 el conector solo cuando se pide. Lo vigilan un contrato de import-linter en el
 CI y una prueba que importa el núcleo en un proceso limpio.
 
@@ -168,6 +223,12 @@ CI y una prueba que importa el núcleo en un proceso limpio.
   stack tenga observabilidad.
 - **El status del sobre de un éxito es el que declara la ruta.** Un endpoint que
   contesta otro status arma su propia respuesta.
+- **Un chequeo que lanza dice `check failed` en el cuerpo**, y su mensaje va al
+  log. En NestJS el cuerpo lleva el mensaje de la excepción; acá no, porque la
+  sonda es pública y el mensaje de un driver puede nombrar un host o un usuario.
+- **Sin ventana de apagado** (`gracefulShutdownTimeoutMs` en NestJS): uvicorn ya
+  deja terminar las peticiones en vuelo al recibir SIGTERM, con
+  `--timeout-graceful-shutdown`.
 
 ## Desarrollo
 
