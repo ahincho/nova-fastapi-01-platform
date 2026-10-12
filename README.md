@@ -192,9 +192,10 @@ balanceador configura igual un servicio de FastAPI y uno de NestJS (ADR-030).
   forma del cuerpo tanto como el código.
 - **`dependencies` se suma a `ready` y a la ruta heredada, nunca a `live`.** Es el
   lugar de un límite de peticiones; un 429 en la sonda de vida haría dar por
-  caído un proceso sano.
-- Cada chequeo caído deja un `warning` en `nova_fastapi.health`, con el chequeo
-  y su motivo en el campo `readiness`.
+  caído un proceso sano. `responses` documenta en esas mismas rutas lo que las
+  dependencias pueden responder, como ese 429.
+- Cada chequeo caído deja un `warning` en `nova_fastapi.health` que dice el
+  chequeo y su motivo, en el mensaje y también en el campo `readiness`.
 
 `path` mueve las dos sondas (`path="api/health"` da `/api/health/live`). Mover
 `path` es mover lo que revisa el balanceador.

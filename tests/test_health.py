@@ -90,6 +90,9 @@ def test_a_check_that_raises_is_down_and_its_cause_goes_only_to_the_log(caplog):
     [record] = [r for r in caplog.records if r.name == "nova_fastapi.health"]
     assert record.readiness["check"] == "database"
     assert "db.internal" in record.readiness["message"]
+    # También en el mensaje: un formato de log de texto no imprime los campos.
+    assert "database" in record.getMessage()
+    assert "db.internal" in record.getMessage()
 
 
 def test_a_check_that_does_not_answer_in_time_is_down():
@@ -189,3 +192,20 @@ def test_openapi_documents_the_probes_with_their_body():
 
     assert set(paths) >= {"/health/live", "/health/ready"}
     assert "503" in paths["/health/ready"]["get"]["responses"]
+    for path in ("/health/live", "/health/ready"):
+        assert paths[path]["get"]["responses"]["200"]["description"] != "Successful Response"
+
+
+def test_responses_document_what_the_dependencies_answer_on_ready_and_legacy_only():
+    app = FastAPI()
+    too_many = {429: {"description": "Demasiadas consultas."}}
+    install_health(app, legacy_path="old", responses=too_many)
+
+    paths = app.openapi()["paths"]
+
+    assert (
+        paths["/health/ready"]["get"]["responses"]["429"]["description"] == "Demasiadas consultas."
+    )
+    assert "429" in paths["/old"]["get"]["responses"]
+    assert "503" in paths["/health/ready"]["get"]["responses"]
+    assert "429" not in paths["/health/live"]["get"]["responses"]

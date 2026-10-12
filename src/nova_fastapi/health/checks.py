@@ -102,15 +102,19 @@ async def run_readiness(
     """
     Corre los chequeos en paralelo, cada uno con su fecha límite.
 
-    Deja un warn por cada chequeo caído, con el chequeo y su motivo como campos:
-    así se pueden contar las caídas de uno sin parsear texto, y una dependencia
-    que parpadea se ve sin que cada ciclo de la sonda parezca un error.
+    Deja un warn por cada chequeo caído, con el chequeo y su motivo en el
+    mensaje y también como campos: el mensaje lo lee cualquier formato de log,
+    y los campos permiten contar las caídas de uno sin parsear texto. En warn y
+    no en error: una dependencia que parpadea se ve sin que cada ciclo de la
+    sonda parezca una caída.
     """
     results = await asyncio.gather(*(_run(check, timeout) for check in checks))
     for result in results:
         if not result.up:
             logger.warning(
-                "Readiness check failed",
+                "Readiness check %s failed: %s",
+                result.name,
+                result.reason,
                 extra={"readiness": {"check": result.name, "message": result.reason}},
             )
     return HealthReport(tuple(results))

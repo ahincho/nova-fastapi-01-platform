@@ -6,8 +6,8 @@ contrato (ADR-030): `GET <path>/live`, `GET <path>/ready` y, si se pide, la ruta
 heredada, con el cuerpo de `@nestjs/terminus`.
 """
 
-from collections.abc import Sequence
-from typing import Literal
+from collections.abc import Mapping, Sequence
+from typing import Any, Literal
 
 from fastapi import FastAPI, params, status
 from fastapi.responses import JSONResponse
@@ -58,6 +58,7 @@ def install_health(
     readiness_checks: Sequence[ReadinessCheck] = (),
     check_timeout: float = DEFAULT_CHECK_TIMEOUT,
     dependencies: Sequence[params.Depends] = (),
+    responses: Mapping[int | str, dict[str, Any]] | None = None,
     tags: Sequence[str] = ("health",),
 ) -> APIRouter:
     """
@@ -75,7 +76,8 @@ def install_health(
 
     `dependencies` se suma a `ready` y a la ruta heredada, nunca a `live`: es el
     lugar de un límite de peticiones, y un 429 en la sonda de vida haría dar por
-    caído un proceso sano.
+    caído un proceso sano. `responses` documenta en las mismas rutas lo que esas
+    dependencias pueden responder, como ese 429.
 
     Las sondas no pasan por el sobre ni por el manejo de errores de Nova: el
     balanceador revisa la forma del cuerpo tanto como el código, así que el 503
@@ -99,6 +101,7 @@ def install_health(
 
     # APIRoute y no la ruta de la aplicación: con `install_nova` sería NovaRoute,
     # y la sonda no lleva sobre.
+    guarded = {**_READY_RESPONSES, **(responses or {})}
     router = APIRouter(route_class=APIRoute, tags=list(tags))
     base = _route(path)
     router.add_api_route(
@@ -107,6 +110,7 @@ def install_health(
         methods=["GET"],
         response_model=HealthBody,
         summary="Si el proceso está vivo (liveness)",
+        response_description="El proceso responde. No dice nada de sus dependencias.",
         operation_id="health_live",
     )
     router.add_api_route(
@@ -114,9 +118,10 @@ def install_health(
         ready,
         methods=["GET"],
         response_model=HealthBody,
-        responses=_READY_RESPONSES,
+        responses=guarded,
         dependencies=list(dependencies),
         summary="Si el servicio puede recibir tráfico (readiness)",
+        response_description="Todos los chequeos están arriba.",
         operation_id="health_ready",
     )
     if legacy_path:
@@ -125,9 +130,10 @@ def install_health(
             ready,
             methods=["GET"],
             response_model=HealthBody,
-            responses=_READY_RESPONSES,
+            responses=guarded,
             dependencies=list(dependencies),
             summary="La ruta heredada, igual que readiness",
+            response_description="Todos los chequeos están arriba.",
             operation_id="health_legacy",
         )
     app.include_router(router)
