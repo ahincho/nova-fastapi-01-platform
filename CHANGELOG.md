@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/ahincho/nova-fastapi-01-platform/compare/v0.2.0...v0.2.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* name the failed check in the log and document the probes ([#5](https://github.com/ahincho/nova-fastapi-01-platform/issues/5)) ([4548ae6](https://github.com/ahincho/nova-fastapi-01-platform/commit/4548ae623970079920008b105939edbaca2dc9b8))
+
 ## [0.2.0](https://github.com/ahincho/nova-fastapi-01-platform/compare/v0.1.0...v0.2.0) (2026-10-12)
 
 
