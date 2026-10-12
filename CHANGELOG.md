@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/ahincho/nova-fastapi-01-platform/compare/v0.1.0...v0.2.0) (2026-10-12)
+
+
+### Features
+
+* add liveness and readiness probes ([#3](https://github.com/ahincho/nova-fastapi-01-platform/issues/3)) ([26c9d43](https://github.com/ahincho/nova-fastapi-01-platform/commit/26c9d43e2c18e68b86d0df53f35206edfcc9b86c))
+
 ## 0.1.0 (2026-10-07)
 
 
